@@ -25,6 +25,7 @@
 #include "jeandle/templatemodule/jeandleRuntimeDefinedJavaOps.hpp"
 #include "jeandle/jeandleRuntimeRoutine.hpp"
 #include "jeandle/jeandleRegister.hpp"
+#include "jeandle/jeandleCallVM.hpp"
 
 #include "jeandle/__hotspotHeadersBegin__.hpp"
 #include "oops/arrayOop.hpp"
@@ -103,6 +104,31 @@ DEF_JAVA_OP(safepoint_poll, 1, llvm::Type::getVoidTy(context))
   ir_builder.CreateRetVoid();
 JAVA_OP_END
 
+DEF_JAVA_OP(newarray, 0, llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace),
+            llvm::Type::getInt32Ty(context),  // length
+            llvm::Type::getInt32Ty(context))  // type
+
+    llvm::Value* length = func->getArg(0);
+    llvm::Value* type = func->getArg(1);
+
+    // Get current thread pointer using jeandle.current_thread JavaOp
+    llvm::Function* current_thread_func = template_module.getFunction("jeandle.current_thread");
+    if (!current_thread_func) {
+        RuntimeDefinedJavaOps::set_failed("jeandle.current_thread is not found in template module");
+        return;
+    }
+    llvm::CallInst* current_thread = ir_builder.CreateCall(current_thread_func);
+    current_thread->setCallingConv(llvm::CallingConv::Hotspot_JIT);
+
+    llvm::CallInst* call_inst = ir_builder.CreateCall(JeandleRuntimeRoutine::new_typeArray_callee(template_module), {type, length, current_thread});
+    call_inst->setCallingConv(llvm::CallingConv::Hotspot_JIT);
+
+    // Load result from vm_result
+    llvm::Type* oop_type = llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
+    llvm::Value* result = JeandleCallVM::load_vm_result(ir_builder, context, current_thread, oop_type);
+    ir_builder.CreateRet(result);
+JAVA_OP_END
+
 } // anonymous namespace
 
 const char* RuntimeDefinedJavaOps::_error_msg = nullptr;
@@ -119,6 +145,7 @@ bool RuntimeDefinedJavaOps::define_all(llvm::Module& template_module) {
   // Define all runtime defined JavaOps:
   define_current_thread(template_module);
   define_safepoint_poll(template_module);
+  define_newarray(template_module);
 
   return failed();
 }

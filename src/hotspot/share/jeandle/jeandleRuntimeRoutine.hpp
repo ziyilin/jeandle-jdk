@@ -28,6 +28,7 @@
 
 #include "jeandle/__hotspotHeadersBegin__.hpp"
 #include "memory/allStatic.hpp"
+#include "memory/oopFactory.hpp"
 #include "runtime/javaThread.hpp"
 #include "utilities/globalDefinitions.hpp"
 
@@ -37,6 +38,9 @@
 #define ALL_JEANDLE_C_ROUTINES(def)                                                                                                             \
   def(safepoint_handler,          llvm::Type::getVoidTy(context), llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace))    \
   def(install_exceptional_return, llvm::Type::getVoidTy(context), llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace), \
+                                                                  llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace)) \
+  def(new_typeArray,              llvm::Type::getVoidTy(context), llvm::Type::getInt32Ty(context),                                            \
+                                                                  llvm::Type::getInt32Ty(context),                                            \
                                                                   llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace))
 
 #define ALL_JEANDLE_ASSEMBLY_ROUTINES(def) \
@@ -106,6 +110,9 @@ class JeandleRuntimeRoutine : public AllStatic {
   static void install_exceptional_return(oopDesc* exception, JavaThread* current);
 
   static address get_exception_handler(JavaThread* current);
+
+  // Array allocation routines:
+  static void new_typeArray(int type, int length, JavaThread* current);
 
   // Assembly routine implementations:
 

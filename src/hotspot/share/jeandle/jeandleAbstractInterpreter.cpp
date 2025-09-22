@@ -766,7 +766,7 @@ void JeandleAbstractInterpreter::interpret_block(JeandleBasicBlock* block) {
       case Bytecodes::_invokedynamic: invoke(); break;
 
       case Bytecodes::_new: Unimplemented(); break;
-      case Bytecodes::_newarray: Unimplemented(); break;
+      case Bytecodes::_newarray: newarray(_bytecodes.get_index_u1()); break;
       case Bytecodes::_anewarray: Unimplemented(); break;
 
       case Bytecodes::_arraylength: arraylength(); break;
@@ -1552,7 +1552,7 @@ void JeandleAbstractInterpreter::do_array_store_inner(BasicType basic_type, llvm
 }
 
 void JeandleAbstractInterpreter::do_array_store(Bytecodes::Code code) {
-  llvm::Value* value = nullptr;
+  llvm::Value *value = nullptr;
   switch (code) {
     case Bytecodes::_iastore: {
       value = _jvm->ipop();
@@ -1576,7 +1576,8 @@ void JeandleAbstractInterpreter::do_array_store(Bytecodes::Code code) {
     }
     case Bytecodes::_aastore: {
       value = _jvm->apop();
-      do_array_store_inner(T_OBJECT, llvm::PointerType::get(*_context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace), value);
+      do_array_store_inner(T_OBJECT, llvm::PointerType::get(*_context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace),
+                           value);
       break;
     }
     case Bytecodes::_bastore: {
@@ -1594,6 +1595,15 @@ void JeandleAbstractInterpreter::do_array_store(Bytecodes::Code code) {
       do_array_store_inner(T_SHORT, llvm::Type::getInt16Ty(*_context), value);
       break;
     }
-    default: ShouldNotReachHere();
+    default:
+      ShouldNotReachHere();
   }
 }
+
+  void JeandleAbstractInterpreter::newarray(int dtype){
+    llvm::Value* length = _jvm->ipop();
+    // Get array type from bytecode
+    llvm::Value* type_value = _ir_builder.getInt32(static_cast<BasicType>(dtype));
+    llvm::CallInst* result = call_java_op("jeandle.newarray", {length, type_value});
+    _jvm->apush(result);
+  }

@@ -92,5 +92,24 @@ void JeandleCallVM::generate_call_VM(const char* name, address c_func, llvm::Fun
   ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_pc_ptr);
 
   // Return.
-  ir_builder.CreateRetVoid();
+  if (func_type->getReturnType()->isVoidTy()) {
+      ir_builder.CreateRetVoid();
+  } else {
+      ir_builder.CreateRet(call_c_func);
+  }
+}
+
+llvm::Value* JeandleCallVM::load_vm_result(llvm::IRBuilder<>& ir_builder, llvm::LLVMContext& context,
+                                           llvm::Value* current_thread, llvm::Type* result_type) {
+  // Load result from vm_result field in JavaThread
+  llvm::Value* vm_result_offset = ir_builder.getInt64(static_cast<uint64_t>(JavaThread::vm_result_offset()));
+  llvm::Value* vm_result_addr = ir_builder.CreateGEP(ir_builder.getInt8Ty(), current_thread, vm_result_offset);
+
+  // Cast to the proper pointer type for the result
+  llvm::Value* vm_result_ptr = ir_builder.CreateBitCast(vm_result_addr, llvm::PointerType::get(result_type, 0));
+
+  // Load the result from vm_result
+  llvm::Value* result = ir_builder.CreateLoad(result_type, vm_result_ptr);
+
+  return result;
 }

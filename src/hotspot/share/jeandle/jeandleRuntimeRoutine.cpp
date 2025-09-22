@@ -91,3 +91,13 @@ JRT_END
 JRT_LEAF(address, JeandleRuntimeRoutine::get_exception_handler(JavaThread* current))
   return SharedRuntime::raw_exception_handler_for_return_address(current, current->exception_pc());
 JRT_END
+
+
+//=============================================================================
+//                      Array Allocation Routines
+//=============================================================================
+JRT_ENTRY(void, JeandleRuntimeRoutine::new_typeArray(int type, int length, JavaThread* current))
+  oop obj = oopFactory::new_typeArray(static_cast<BasicType>(type), length, current);
+  current->set_vm_result(obj);
+JRT_END
+

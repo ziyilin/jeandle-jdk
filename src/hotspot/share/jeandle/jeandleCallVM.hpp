@@ -25,6 +25,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include "jeandle/jeandleCompiledCode.hpp"
 
@@ -36,6 +37,7 @@ class JeandleCallVM : public AllStatic {
   // Generate stubs that call Jeandle C/C++ routines.
   // For more information, see JeandleRuntimeRoutine.
   static void generate_call_VM(const char* name, address c_func, llvm::FunctionType* func_type, llvm::Module& target_module, JeandleCompiledCode& code);
+  static llvm::Value* load_vm_result(llvm::IRBuilder<>& ir_builder, llvm::LLVMContext& context, llvm::Value* current_thread, llvm::Type* result_type);
 };
 
 #endif // SHARE_JEANDLE_CALL_VM_HPP
