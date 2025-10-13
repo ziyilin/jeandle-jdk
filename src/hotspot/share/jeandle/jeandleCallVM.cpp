@@ -95,21 +95,32 @@ void JeandleCallVM::generate_call_VM(const char* name, address c_func, llvm::Fun
   if (func_type->getReturnType()->isVoidTy()) {
       ir_builder.CreateRetVoid();
   } else {
-      ir_builder.CreateRet(call_c_func);
+      llvm::Value* ret_val = call_c_func;
+      
+      // If the return type is a pointer type (object), we need to load from vm_result field
+      if (func_type->getReturnType()->isPointerTy()) {
+          // Get current thread pointer to load vm_result from
+          llvm::MDNode* current_thread_md = llvm::MDNode::get(context, {llvm::MDString::get(context, JeandleRegister::get_current_thread_pointer())});
+          llvm::Value* current_thread_args[] = {llvm::MetadataAsValue::get(context, current_thread_md)};
+          llvm::Type* intptr_type = ir_builder.getIntPtrTy(target_module.getDataLayout());
+          llvm::Value* current_thread = ir_builder.CreateIntrinsic(llvm::Intrinsic::read_register,
+                                                                   intptr_type,
+                                                                   current_thread_args);
+          
+          // Load result from vm_result field in JavaThread
+          llvm::Value* vm_result_offset = ir_builder.getInt64(static_cast<uint64_t>(JavaThread::vm_result_offset()));
+          // Create vm_result_addr with correct address space (JavaHeapAddrSpace)
+          llvm::Type* vm_result_addr_type = llvm::PointerType::get(ir_builder.getInt8Ty(), llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
+          llvm::Value* vm_result_addr = ir_builder.CreateIntToPtr(vm_result_offset, vm_result_addr_type);
+          
+          // Cast to the proper pointer type for the result
+          llvm::Type* result_ptr_type = llvm::PointerType::get(func_type->getReturnType(), llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
+          llvm::Value* vm_result_ptr = ir_builder.CreateBitCast(vm_result_addr, result_ptr_type);
+          
+          // Load the result from vm_result
+          ret_val = ir_builder.CreateLoad(func_type->getReturnType(), vm_result_ptr);
+      }
+      
+      ir_builder.CreateRet(ret_val);
   }
-}
-
-llvm::Value* JeandleCallVM::load_vm_result(llvm::IRBuilder<>& ir_builder, llvm::LLVMContext& context,
-                                           llvm::Value* current_thread, llvm::Type* result_type) {
-  // Load result from vm_result field in JavaThread
-  llvm::Value* vm_result_offset = ir_builder.getInt64(static_cast<uint64_t>(JavaThread::vm_result_offset()));
-  llvm::Value* vm_result_addr = ir_builder.CreateGEP(ir_builder.getInt8Ty(), current_thread, vm_result_offset);
-
-  // Cast to the proper pointer type for the result
-  llvm::Value* vm_result_ptr = ir_builder.CreateBitCast(vm_result_addr, llvm::PointerType::get(result_type, 0));
-
-  // Load the result from vm_result
-  llvm::Value* result = ir_builder.CreateLoad(result_type, vm_result_ptr);
-
-  return result;
 }

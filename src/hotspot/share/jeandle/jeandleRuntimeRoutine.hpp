@@ -39,7 +39,8 @@
   def(safepoint_handler,          llvm::Type::getVoidTy(context), llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace))    \
   def(install_exceptional_return, llvm::Type::getVoidTy(context), llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace), \
                                                                   llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace)) \
-  def(new_typeArray,              llvm::Type::getVoidTy(context), llvm::Type::getInt32Ty(context),                                            \
+  def(new_typeArray,              llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace),                                  \
+                                                                  llvm::Type::getInt32Ty(context),                                            \
                                                                   llvm::Type::getInt32Ty(context),                                            \
                                                                   llvm::PointerType::get(context, llvm::jeandle::AddrSpace::CHeapAddrSpace))
 
@@ -112,7 +113,7 @@ class JeandleRuntimeRoutine : public AllStatic {
   static address get_exception_handler(JavaThread* current);
 
   // Array allocation routines:
-  static void new_typeArray(int type, int length, JavaThread* current);
+  static oop new_typeArray(int type, int length, JavaThread* current);
 
   // Assembly routine implementations:
 

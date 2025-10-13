@@ -96,8 +96,9 @@ JRT_END
 //=============================================================================
 //                      Array Allocation Routines
 //=============================================================================
-JRT_ENTRY(void, JeandleRuntimeRoutine::new_typeArray(int type, int length, JavaThread* current))
+JRT_ENTRY(oop, JeandleRuntimeRoutine::new_typeArray(int type, int length, JavaThread* current))
   oop obj = oopFactory::new_typeArray(static_cast<BasicType>(type), length, current);
   current->set_vm_result(obj);
+  return obj;
 JRT_END
 

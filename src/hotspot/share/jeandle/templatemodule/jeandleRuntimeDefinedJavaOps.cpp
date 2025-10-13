@@ -122,11 +122,7 @@ DEF_JAVA_OP(newarray, 0, llvm::PointerType::get(context, llvm::jeandle::AddrSpac
 
     llvm::CallInst* call_inst = ir_builder.CreateCall(JeandleRuntimeRoutine::new_typeArray_callee(template_module), {type, length, current_thread});
     call_inst->setCallingConv(llvm::CallingConv::Hotspot_JIT);
-
-    // Load result from vm_result
-    llvm::Type* oop_type = llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
-    llvm::Value* result = JeandleCallVM::load_vm_result(ir_builder, context, current_thread, oop_type);
-    ir_builder.CreateRet(result);
+    ir_builder.CreateRet(call_inst);
 JAVA_OP_END
 
 } // anonymous namespace
