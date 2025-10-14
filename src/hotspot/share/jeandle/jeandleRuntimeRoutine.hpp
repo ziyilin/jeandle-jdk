@@ -112,8 +112,8 @@ class JeandleRuntimeRoutine : public AllStatic {
 
   static address get_exception_handler(JavaThread* current);
 
-  // Array allocation routines:
-  static oop new_typeArray(int type, int length, JavaThread* current);
+  // Array allocation routines
+  static oop new_typeArray(int type, int length, JavaThread* thread);
 
   // Assembly routine implementations:
 

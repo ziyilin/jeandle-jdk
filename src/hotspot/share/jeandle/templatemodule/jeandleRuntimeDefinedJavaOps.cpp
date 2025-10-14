@@ -120,6 +120,7 @@ DEF_JAVA_OP(newarray, 0, llvm::PointerType::get(context, llvm::jeandle::AddrSpac
     llvm::CallInst* current_thread = ir_builder.CreateCall(current_thread_func);
     current_thread->setCallingConv(llvm::CallingConv::Hotspot_JIT);
 
+    // 修正参数顺序，应该按照函数签名的顺序传递：type, length, current_thread
     llvm::CallInst* call_inst = ir_builder.CreateCall(JeandleRuntimeRoutine::new_typeArray_callee(template_module), {type, length, current_thread});
     call_inst->setCallingConv(llvm::CallingConv::Hotspot_JIT);
     ir_builder.CreateRet(call_inst);

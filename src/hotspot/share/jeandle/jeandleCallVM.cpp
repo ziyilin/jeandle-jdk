@@ -78,49 +78,68 @@ void JeandleCallVM::generate_call_VM(const char* name, address c_func, llvm::Fun
   llvm::Attribute patch_bytes_attr = llvm::Attribute::get(context,
                                                           llvm::jeandle::Attribute::StatepointNumPatchBytes,
                                                           std::to_string(JeandleCompiledCall::call_site_patch_size(call_type)));
-  call_c_func->addFnAttr(id_attr);
-  call_c_func->addFnAttr(patch_bytes_attr);
-
-  // TODO: Check exceptions.
-
-  // Clear the last_Java_sp.
-  ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_sp_ptr);
-
-  // Clear the last_Java_pc.
-  llvm::Value* last_Java_pc_ptr = ir_builder.CreateIntToPtr(ir_builder.getInt64((uint64_t)JavaThread::last_Java_pc_offset()),
-                                                            llvm::PointerType::get(context, llvm::jeandle::AddrSpace::TLSAddrSpace));
-  ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_pc_ptr);
+  
 
   // Return.
   if (func_type->getReturnType()->isVoidTy()) {
-      ir_builder.CreateRetVoid();
+    fprintf(stderr, "Return type of function %s is void!\n", name);
+    call_c_func->addFnAttr(id_attr);
+    call_c_func->addFnAttr(patch_bytes_attr);
+
+    // TODO: Check exceptions.
+
+    // Clear the last_Java_sp.
+    ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_sp_ptr);
+
+    // Clear the last_Java_pc.
+    llvm::Value* last_Java_pc_ptr = ir_builder.CreateIntToPtr(ir_builder.getInt64((uint64_t)JavaThread::last_Java_pc_offset()),
+                                                              llvm::PointerType::get(context, llvm::jeandle::AddrSpace::TLSAddrSpace));
+    ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_pc_ptr);       
+    ir_builder.CreateRetVoid();
   } else {
       llvm::Value* ret_val = call_c_func;
       
       // If the return type is a pointer type (object), we need to load from vm_result field
       if (func_type->getReturnType()->isPointerTy()) {
-          // Get current thread pointer to load vm_result from
-          llvm::MDNode* current_thread_md = llvm::MDNode::get(context, {llvm::MDString::get(context, JeandleRegister::get_current_thread_pointer())});
-          llvm::Value* current_thread_args[] = {llvm::MetadataAsValue::get(context, current_thread_md)};
-          llvm::Type* intptr_type = ir_builder.getIntPtrTy(target_module.getDataLayout());
-          llvm::Value* current_thread = ir_builder.CreateIntrinsic(llvm::Intrinsic::read_register,
-                                                                   intptr_type,
-                                                                   current_thread_args);
+          // Get current thread pointer from function arguments (last argument)
+          llvm::Value* current_thread_ptr = args.back(); // Last argument is always thread pointer
+          
+          // DEBUG: Print type information
+          fprintf(stderr, "current_thread_ptr type: %s\n", current_thread_ptr->getType()->getTypeID() == llvm::Type::PointerTyID ? "Pointer" : "Not Pointer");
+          fprintf(stderr, "current_thread_ptr addr space: %u\n", current_thread_ptr->getType()->getPointerAddressSpace());
+          fprintf(stderr, "func_type->getReturnType(): %s\n", func_type->getReturnType()->getTypeID() == llvm::Type::PointerTyID ? "Pointer" : "Not Pointer");
           
           // Load result from vm_result field in JavaThread
           llvm::Value* vm_result_offset = ir_builder.getInt64(static_cast<uint64_t>(JavaThread::vm_result_offset()));
-          // Create vm_result_addr with correct address space (JavaHeapAddrSpace)
-          llvm::Type* vm_result_addr_type = llvm::PointerType::get(ir_builder.getInt8Ty(), llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
-          llvm::Value* vm_result_addr = ir_builder.CreateIntToPtr(vm_result_offset, vm_result_addr_type);
+          // Create vm_result_addr using GEP on current_thread with vm_result_offset
+          llvm::Value* vm_result_addr = ir_builder.CreateGEP(ir_builder.getInt8Ty(), current_thread_ptr, vm_result_offset);
+          
+          // DEBUG: Print type information before cast
+          fprintf(stderr, "vm_result_addr type: %s\n", vm_result_addr->getType()->getTypeID() == llvm::Type::PointerTyID ? "Pointer" : "Not Pointer");
+          fprintf(stderr, "vm_result_addr addr space: %u\n", vm_result_addr->getType()->getPointerAddressSpace());
           
           // Cast to the proper pointer type for the result
           llvm::Type* result_ptr_type = llvm::PointerType::get(func_type->getReturnType(), llvm::jeandle::AddrSpace::JavaHeapAddrSpace);
-          llvm::Value* vm_result_ptr = ir_builder.CreateBitCast(vm_result_addr, result_ptr_type);
+          fprintf(stderr, "result_ptr_type addr space: %u\n", result_ptr_type->getPointerAddressSpace());
+          fprintf(stderr, "func_type->getReturnType() addr space: %u\n", func_type->getReturnType()->getPointerAddressSpace());
+          
+          llvm::Value* vm_result_ptr = ir_builder.CreateBitCast(vm_result_addr, llvm::PointerType::get(result_ptr_type, 0));
           
           // Load the result from vm_result
           ret_val = ir_builder.CreateLoad(func_type->getReturnType(), vm_result_ptr);
       }
-      
+      call_c_func->addFnAttr(id_attr);
+    call_c_func->addFnAttr(patch_bytes_attr);
+
+    // TODO: Check exceptions.
+
+    // Clear the last_Java_sp.
+    ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_sp_ptr);
+
+    // Clear the last_Java_pc.
+    llvm::Value* last_Java_pc_ptr = ir_builder.CreateIntToPtr(ir_builder.getInt64((uint64_t)JavaThread::last_Java_pc_offset()),
+                                                              llvm::PointerType::get(context, llvm::jeandle::AddrSpace::TLSAddrSpace));
+    ir_builder.CreateStore(ir_builder.getInt64((intptr_t)nullptr), last_Java_pc_ptr);     
       ir_builder.CreateRet(ret_val);
   }
 }
