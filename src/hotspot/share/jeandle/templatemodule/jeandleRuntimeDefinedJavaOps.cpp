@@ -105,11 +105,11 @@ DEF_JAVA_OP(safepoint_poll, 1, llvm::Type::getVoidTy(context))
 JAVA_OP_END
 
 DEF_JAVA_OP(newarray, 0, llvm::PointerType::get(context, llvm::jeandle::AddrSpace::JavaHeapAddrSpace),
-            llvm::Type::getInt32Ty(context),  // length
-            llvm::Type::getInt32Ty(context))  // type
+            llvm::Type::getInt32Ty(context),  // type
+            llvm::Type::getInt32Ty(context))  // length
 
-    llvm::Value* length = func->getArg(0);
-    llvm::Value* type = func->getArg(1);
+    llvm::Value* type = func->getArg(0);
+    llvm::Value* length = func->getArg(1);
 
     // Get current thread pointer using jeandle.current_thread JavaOp
     llvm::Function* current_thread_func = template_module.getFunction("jeandle.current_thread");
@@ -120,7 +120,6 @@ DEF_JAVA_OP(newarray, 0, llvm::PointerType::get(context, llvm::jeandle::AddrSpac
     llvm::CallInst* current_thread = ir_builder.CreateCall(current_thread_func);
     current_thread->setCallingConv(llvm::CallingConv::Hotspot_JIT);
 
-    // 修正参数顺序，应该按照函数签名的顺序传递：type, length, current_thread
     llvm::CallInst* call_inst = ir_builder.CreateCall(JeandleRuntimeRoutine::new_typeArray_callee(template_module), {type, length, current_thread});
     call_inst->setCallingConv(llvm::CallingConv::Hotspot_JIT);
     ir_builder.CreateRet(call_inst);

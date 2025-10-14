@@ -1604,6 +1604,6 @@ void JeandleAbstractInterpreter::do_array_store(Bytecodes::Code code) {
     llvm::Value* length = _jvm->ipop();
     // Get array type from bytecode
     llvm::Value* type_value = _ir_builder.getInt32(static_cast<BasicType>(dtype));
-    llvm::CallInst* result = call_java_op("jeandle.newarray", {length, type_value});
+    llvm::CallInst* result = call_java_op("jeandle.newarray", {type_value, length});
     _jvm->apush(result);
   }

@@ -96,9 +96,9 @@ JRT_END
 //=============================================================================
 //                      Array Allocation Routines
 //=============================================================================
-JRT_ENTRY(oop, JeandleRuntimeRoutine::new_typeArray(JavaThread* current, int type, int length))
+JRT_ENTRY(oop, JeandleRuntimeRoutine::new_typeArray(int type, int length, JavaThread* current))
   // 添加调试信息，打印三个参数的值
-  tty->print_cr("new_typeArray called with: current=0x%p, type=%d, length=%d", current, type, length);
+  tty->print_cr("new_typeArray called with: type=%d, length=%d, current=0x%p", type, length, current);
   oop obj = oopFactory::new_typeArray(static_cast<BasicType>(type), length, current);
   current->set_vm_result(obj);
   return obj;
